@@ -12,6 +12,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate manifest
         run: python -m json.tool manifest.json > /dev/null
+      - name: Validate JavaScript
+        run: node --check app.js
       - name: Build zip
         run: zip -r darma-new-tab.zip manifest.json newtab.html styles.css app.js
       - uses: actions/upload-artifact@v4
