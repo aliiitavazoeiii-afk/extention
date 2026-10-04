@@ -1,7 +1,10 @@
 "use strict";
 
 const STORAGE_KEY = "darmaDashboard.v1";
+const CUSTOM_ICON_STORAGE_KEY = "darmaDashboard.customIcons.v1";
 const ICON_CDN = "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/";
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const MAX_RASTER_DIMENSION = 512;
 
 const DEFAULT_STATE = {
   popular: [
@@ -45,6 +48,9 @@ const KNOWN_ICONS = [
 ];
 
 let state = clone(DEFAULT_STATE);
+let customIcons = {};
+let pendingIconData = "";
+let pendingIconRemoved = false;
 let dragData = null;
 
 const els = {
@@ -59,6 +65,10 @@ const els = {
   siteName: document.getElementById("siteName"),
   siteUrl: document.getElementById("siteUrl"),
   siteIcon: document.getElementById("siteIcon"),
+  siteIconFile: document.getElementById("siteIconFile"),
+  pickIcon: document.getElementById("pickIcon"),
+  iconFileStatus: document.getElementById("iconFileStatus"),
+  removeUploadedIcon: document.getElementById("removeUploadedIcon"),
   modalTitle: document.getElementById("modalTitle"),
   modalEyebrow: document.getElementById("modalEyebrow"),
   deleteSite: document.getElementById("deleteSite"),
@@ -72,11 +82,19 @@ init();
 
 async function init() {
   try {
-    const stored = await chrome.storage.sync.get(STORAGE_KEY);
+    const [stored, localStored] = await Promise.all([
+      chrome.storage.sync.get(STORAGE_KEY),
+      chrome.storage.local.get(CUSTOM_ICON_STORAGE_KEY)
+    ]);
+
     if (stored[STORAGE_KEY]) state = normalizeState(stored[STORAGE_KEY]);
+    if (localStored[CUSTOM_ICON_STORAGE_KEY] && typeof localStored[CUSTOM_ICON_STORAGE_KEY] === "object") {
+      customIcons = localStored[CUSTOM_ICON_STORAGE_KEY];
+    }
   } catch (error) {
-    console.warn("Could not load synced dashboard state:", error);
+    console.warn("Could not load dashboard state:", error);
   }
+
   render();
   bindUi();
 }
@@ -97,6 +115,14 @@ async function saveState() {
     await chrome.storage.sync.set({ [STORAGE_KEY]: state });
   } catch (error) {
     console.warn("Could not sync dashboard state:", error);
+  }
+}
+
+async function saveCustomIcons() {
+  try {
+    await chrome.storage.local.set({ [CUSTOM_ICON_STORAGE_KEY]: customIcons });
+  } catch (error) {
+    console.warn("Could not save custom icons:", error);
   }
 }
 
@@ -254,6 +280,38 @@ function bindUi() {
   els.siteUrl.addEventListener("input", updatePreview);
   els.siteIcon.addEventListener("input", updatePreview);
 
+  els.pickIcon.addEventListener("click", function() {
+    els.siteIconFile.click();
+  });
+
+  els.siteIconFile.addEventListener("change", async function() {
+    const file = els.siteIconFile.files && els.siteIconFile.files[0];
+    if (!file) return;
+
+    try {
+      els.iconFileStatus.textContent = "در حال آماده‌سازی…";
+      pendingIconData = await prepareUploadedIcon(file);
+      pendingIconRemoved = false;
+      els.iconFileStatus.textContent = file.name;
+      els.removeUploadedIcon.hidden = false;
+      updatePreview();
+    } catch (error) {
+      pendingIconData = "";
+      els.siteIconFile.value = "";
+      els.iconFileStatus.textContent = error.message || "فایل قابل استفاده نیست";
+      console.warn(error);
+    }
+  });
+
+  els.removeUploadedIcon.addEventListener("click", function() {
+    pendingIconData = "";
+    pendingIconRemoved = true;
+    els.siteIconFile.value = "";
+    els.iconFileStatus.textContent = "PNG، JPG، WebP یا SVG";
+    els.removeUploadedIcon.hidden = true;
+    updatePreview();
+  });
+
   els.form.addEventListener("submit", async function(event) {
     event.preventDefault();
 
@@ -272,14 +330,23 @@ function bindUi() {
       return;
     }
 
+    let savedId = id;
+
     if (id) {
       const index = state[section].findIndex(function(item) { return item.id === id; });
       if (index >= 0) state[section][index] = { id: id, name: name, url: url, icon: icon };
     } else {
-      state[section].push({ id: makeId(), name: name, url: url, icon: icon });
+      savedId = makeId();
+      state[section].push({ id: savedId, name: name, url: url, icon: icon });
     }
 
-    await saveState();
+    if (pendingIconData) {
+      customIcons[savedId] = pendingIconData;
+    } else if (pendingIconRemoved) {
+      delete customIcons[savedId];
+    }
+
+    await Promise.all([saveState(), saveCustomIcons()]);
     render();
     closeModal();
   });
@@ -293,7 +360,8 @@ function bindUi() {
     if (!window.confirm("«" + (site ? site.name : "این سایت") + "» حذف شود؟")) return;
 
     state[section] = state[section].filter(function(item) { return item.id !== id; });
-    await saveState();
+    delete customIcons[id];
+    await Promise.all([saveState(), saveCustomIcons()]);
     render();
     closeModal();
   });
@@ -307,6 +375,13 @@ function openModal(section, id) {
   els.siteName.value = site ? site.name : "";
   els.siteUrl.value = site ? site.url : "";
   els.siteIcon.value = site ? (site.icon || "") : "";
+  els.siteIconFile.value = "";
+  pendingIconData = "";
+  pendingIconRemoved = false;
+
+  const hasUploadedIcon = Boolean(site && customIcons[site.id]);
+  els.iconFileStatus.textContent = hasUploadedIcon ? "لوگوی آپلودی فعال است" : "PNG، JPG، WebP یا SVG";
+  els.removeUploadedIcon.hidden = !hasUploadedIcon;
 
   els.modalEyebrow.textContent = section === "vpn" ? "بخش VPN" : "سایت‌های پرکاربرد";
   els.modalTitle.textContent = site ? "ویرایش سایت" : "افزودن سایت";
@@ -321,6 +396,11 @@ function closeModal() {
   els.backdrop.hidden = true;
   els.form.reset();
   els.siteId.value = "";
+  pendingIconData = "";
+  pendingIconRemoved = false;
+  els.siteIconFile.value = "";
+  els.iconFileStatus.textContent = "PNG، JPG، WebP یا SVG";
+  els.removeUploadedIcon.hidden = true;
 }
 
 function updatePreview() {
@@ -333,7 +413,18 @@ function updatePreview() {
   els.previewHost.textContent = rawUrl ? displayHost(url) : "example.com";
   els.previewFallback.textContent = firstLetter(name);
 
-  applyIcon(els.previewImage, els.previewFallback, { name: name, url: url, icon: icon });
+  const editingId = els.siteId.value;
+  const uploadedIcon = pendingIconRemoved
+    ? ""
+    : (pendingIconData || (editingId ? customIcons[editingId] : ""));
+
+  applyIcon(els.previewImage, els.previewFallback, {
+    id: editingId,
+    name: name,
+    url: url,
+    icon: icon,
+    uploadedIcon: uploadedIcon
+  });
 }
 
 function applyIcon(img, fallback, site) {
@@ -366,8 +457,12 @@ function applyIcon(img, fallback, site) {
 
 function iconCandidates(site) {
   const candidates = [];
+
+  const uploaded = site.uploadedIcon || (site.id ? customIcons[site.id] : "");
+  if (uploaded) candidates.push(uploaded);
+
   const custom = (site.icon || "").trim();
-  if (custom) candidates.push(custom);
+  if (custom && !candidates.includes(custom)) candidates.push(custom);
 
   const known = knownIconForUrl(site.url);
   if (known && !candidates.includes(known)) candidates.push(known);
@@ -422,5 +517,72 @@ function makeId() {
 function toPersianDigits(value) {
   return String(value).replace(/\d/g, function(digit) {
     return "۰۱۲۳۴۵۶۷۸۹"[Number(digit)];
+  });
+}
+
+
+function prepareUploadedIcon(file) {
+  const allowedTypes = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+
+  if (!allowedTypes.includes(file.type)) {
+    return Promise.reject(new Error("فرمت تصویر پشتیبانی نمی‌شود."));
+  }
+
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return Promise.reject(new Error("حجم تصویر باید کمتر از ۵ مگابایت باشد."));
+  }
+
+  if (file.type === "image/svg+xml") {
+    return readFileAsDataUrl(file);
+  }
+
+  return optimizeRasterIcon(file);
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise(function(resolve, reject) {
+    const reader = new FileReader();
+    reader.onload = function() { resolve(reader.result); };
+    reader.onerror = function() { reject(new Error("خواندن فایل تصویر ناموفق بود.")); };
+    reader.readAsDataURL(file);
+  });
+}
+
+function optimizeRasterIcon(file) {
+  return new Promise(function(resolve, reject) {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = function() {
+      try {
+        const maxSide = Math.max(image.naturalWidth, image.naturalHeight);
+        const scale = Math.min(1, MAX_RASTER_DIMENSION / maxSide);
+        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const context = canvas.getContext("2d", { alpha: true });
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = "high";
+        context.drawImage(image, 0, 0, width, height);
+
+        const result = canvas.toDataURL("image/webp", 0.94);
+        URL.revokeObjectURL(objectUrl);
+        resolve(result);
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("بهینه‌سازی تصویر ناموفق بود."));
+      }
+    };
+
+    image.onerror = function() {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("فایل تصویر معتبر نیست."));
+    };
+
+    image.src = objectUrl;
   });
 }
