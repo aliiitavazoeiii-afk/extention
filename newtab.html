@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07110f">
+  <title>Darma New Tab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <div class="ambient ambient-three"></div>
+
+  <main class="dashboard" aria-label="دسترسی سریع">
+    <section class="panel panel-popular" data-section="popular">
+      <header class="panel-header">
+        <div class="panel-title-wrap">
+          <div class="panel-kicker">
+            <span class="section-mark" aria-hidden="true"></span>
+            <span>دسترسی روزانه</span>
+          </div>
+          <div class="panel-title-row">
+            <h1>سایت‌های پرکاربرد</h1>
+            <span class="count-badge" id="popularCount">۰</span>
+          </div>
+          <p>سایت‌هایی که بیشتر از همه استفاده می‌کنی، همیشه همین‌جا و دم دست.</p>
+        </div>
+        <button class="add-button" type="button" data-add-section="popular">
+          <span class="plus" aria-hidden="true">+</span>
+          <span>افزودن سایت</span>
+        </button>
+      </header>
+      <div class="sites-grid" id="popularGrid" aria-live="polite"></div>
+    </section>
+
+    <section class="panel panel-vpn" data-section="vpn">
+      <header class="panel-header">
+        <div class="panel-title-wrap">
+          <div class="panel-kicker vpn-kicker">
+            <span class="shield-dot" aria-hidden="true"></span>
+            <span>دسترسی با VPN</span>
+          </div>
+          <div class="panel-title-row">
+            <h2>VPN</h2>
+            <span class="count-badge" id="vpnCount">۰</span>
+          </div>
+          <p>سایت‌هایی که معمولاً با VPN باز می‌کنی را اینجا نگه دار.</p>
+        </div>
+        <button class="add-button" type="button" data-add-section="vpn">
+          <span class="plus" aria-hidden="true">+</span>
+          <span>افزودن سایت</span>
+        </button>
+      </header>
+      <div class="sites-grid vpn-grid" id="vpnGrid" aria-live="polite"></div>
+    </section>
+
+    <div class="drag-hint">برای مرتب‌کردن، کارت‌ها را بکش و جابه‌جا کن.</div>
+  </main>
+
+  <div class="modal-backdrop" id="modalBackdrop" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header class="modal-header">
+        <div>
+          <span class="modal-eyebrow" id="modalEyebrow">سایت جدید</span>
+          <h2 id="modalTitle">افزودن سایت</h2>
+        </div>
+        <button class="icon-button" id="closeModal" type="button" aria-label="بستن">×</button>
+      </header>
+
+      <form id="siteForm">
+        <input type="hidden" id="siteSection">
+        <input type="hidden" id="siteId">
+
+        <div class="preview-row">
+          <div class="preview-icon">
+            <img id="previewImage" alt="">
+            <span id="previewFallback">س</span>
+          </div>
+          <div class="preview-copy">
+            <strong id="previewName">نام سایت</strong>
+            <span id="previewHost">example.com</span>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>نام سایت</span>
+          <input id="siteName" name="siteName" autocomplete="off" maxlength="32" placeholder="مثلاً YouTube" required>
+        </label>
+
+        <label class="field">
+          <span>آدرس سایت</span>
+          <input id="siteUrl" name="siteUrl" type="text" inputmode="url" autocomplete="off" placeholder="https://example.com" required>
+        </label>
+
+        <label class="field">
+          <span>آدرس لوگو <small>اختیاری</small></span>
+          <input id="siteIcon" name="siteIcon" type="text" inputmode="url" autocomplete="off" placeholder="SVG / PNG باکیفیت">
+          <em>اگر خالی بگذاری، افزونه بهترین آیکون قابل‌دسترسی را انتخاب می‌کند.</em>
+        </label>
+
+        <div class="modal-actions">
+          <button class="danger-button" id="deleteSite" type="button" hidden>حذف سایت</button>
+          <div class="action-spacer"></div>
+          <button class="ghost-button" id="cancelModal" type="button">انصراف</button>
+          <button class="primary-button" type="submit">ذخیره</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
