@@ -1,0 +1,22 @@
+name: Package Chrome Extension
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifest
+        run: python -m json.tool manifest.json > /dev/null
+      - name: Build zip
+        run: zip -r darma-new-tab.zip manifest.json newtab.html styles.css app.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: darma-new-tab
+          path: darma-new-tab.zip
+          if-no-files-found: error
+          retention-days: 14
