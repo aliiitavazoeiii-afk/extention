@@ -93,10 +93,26 @@
           <input id="siteUrl" name="siteUrl" type="text" inputmode="url" autocomplete="off" placeholder="https://example.com" required>
         </label>
 
+        <div class="field">
+          <span>لوگوی اختصاصی <small>پیشنهادی برای بهترین کیفیت</small></span>
+          <input id="siteIconFile" class="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+          <div class="upload-row">
+            <button class="upload-button" id="pickIcon" type="button">
+              <span class="upload-symbol" aria-hidden="true">↑</span>
+              <span>آپلود لوگوی باکیفیت</span>
+            </button>
+            <span class="upload-status" id="iconFileStatus">PNG، JPG، WebP یا SVG</span>
+            <button class="remove-upload-button" id="removeUploadedIcon" type="button" hidden>حذف تصویر</button>
+          </div>
+          <em>تصویر به‌صورت محلی ذخیره می‌شود. برای لوگوهای تصویری تا ۵ مگابایت مناسب است و برای نمایش شارپ بهینه می‌شود.</em>
+        </div>
+
+        <div class="field-separator"><span>یا</span></div>
+
         <label class="field">
-          <span>آدرس لوگو <small>اختیاری</small></span>
-          <input id="siteIcon" name="siteIcon" type="text" inputmode="url" autocomplete="off" placeholder="SVG / PNG باکیفیت">
-          <em>اگر خالی بگذاری، افزونه بهترین آیکون قابل‌دسترسی را انتخاب می‌کند.</em>
+          <span>آدرس اینترنتی لوگو <small>اختیاری</small></span>
+          <input id="siteIcon" name="siteIcon" type="text" inputmode="url" autocomplete="off" placeholder="https://.../logo.svg">
+          <em>اگر هیچ لوگویی انتخاب نکنی، افزونه خودش بهترین آیکون قابل‌دسترسی را پیدا می‌کند.</em>
         </label>
 
         <div class="modal-actions">
