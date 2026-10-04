@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Darma New Tab",
+  "version": "0.1.0",
+  "description": "صفحه New Tab مینیمال با سایت‌های پرکاربرد و بخش VPN",
+  "permissions": [
+    "storage"
+  ],
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:;"
+  }
+}
